@@ -18,7 +18,7 @@ func Status(e *echo.Echo) {
 	})
 }
 
-var RouteModule = fx.Module(
+var routeModule = fx.Module(
 	"routes",
 	fx.Invoke(
 		Status,

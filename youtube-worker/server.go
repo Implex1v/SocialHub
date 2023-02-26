@@ -4,6 +4,7 @@ import (
 	"go.uber.org/fx"
 	"youtube-worker/http"
 	"youtube-worker/logging"
+	"youtube-worker/messaging"
 )
 
 func main() {
@@ -15,4 +16,5 @@ func main() {
 var module = fx.Options(
 	http.Module,
 	logging.Module,
+	messaging.Module,
 )

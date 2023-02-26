@@ -29,7 +29,7 @@ func NewHTTPServer(lc fx.Lifecycle) *echo.Echo {
 }
 
 var Module = fx.Module("http",
-	RouteModule,
+	routeModule,
 	fx.Provide(
 		NewHTTPServer,
 	),
