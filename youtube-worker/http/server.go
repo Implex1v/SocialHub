@@ -12,11 +12,12 @@ func NewHTTPServer(lc fx.Lifecycle) *echo.Echo {
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			err := e.Start(":8000")
-			if err != nil {
-				fmt.Println("Failed to start server on :8000")
-				return err
-			}
+			go func() {
+				err := e.Start(":8000")
+				if err != nil {
+					fmt.Print(fmt.Errorf("failed to start server on :8000", err))
+				}
+			}()
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {

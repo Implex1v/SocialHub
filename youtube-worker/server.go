@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"
 	"youtube-worker/http"
 )
@@ -9,6 +8,6 @@ import (
 func main() {
 	fx.New(
 		fx.Provide(http.NewHTTPServer),
-		fx.Invoke(func(echo *echo.Echo) {}),
+		fx.Invoke(http.NewPrometheus),
 	).Run()
 }
