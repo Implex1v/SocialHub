@@ -3,11 +3,16 @@ package main
 import (
 	"go.uber.org/fx"
 	"youtube-worker/http"
+	"youtube-worker/logging"
 )
 
 func main() {
 	fx.New(
-		fx.Provide(http.NewHTTPServer),
-		fx.Invoke(http.NewPrometheus),
+		module,
 	).Run()
 }
+
+var module = fx.Options(
+	http.Module,
+	logging.Module,
+)

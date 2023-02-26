@@ -27,3 +27,14 @@ func NewHTTPServer(lc fx.Lifecycle) *echo.Echo {
 
 	return e
 }
+
+var Module = fx.Module("http",
+	fx.Provide(
+		NewHTTPServer,
+	),
+	fx.Invoke(
+		NewPrometheus,
+		NewLogger,
+		NewRequestLogger,
+	),
+)
