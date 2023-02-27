@@ -7,6 +7,7 @@ import (
 	"youtube-worker/http"
 	"youtube-worker/logging"
 	"youtube-worker/messaging"
+	"youtube-worker/metrics"
 )
 
 func main() {
@@ -16,6 +17,7 @@ func main() {
 }
 
 var module = fx.Options(
+	metrics.Module,
 	http.Module,
 	logging.Module,
 	messaging.Module,
