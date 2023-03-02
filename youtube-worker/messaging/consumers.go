@@ -28,7 +28,7 @@ func NewYoutubePollConsumer() KafkaConsumer {
 
 func RegisterConsumers(consumers []KafkaConsumer, l *zap.SugaredLogger, lc fx.Lifecycle, metrics *metrics.AppMetrics) {
 	for _, consumer := range consumers {
-		l.Infof("Registering consumer '%v' for topic '%v'", consumer.Name, consumer.Topic)
+		l.Infof("Registering consumer '%v' in consumer group '%v' for topic '%v'", consumer.Name, consumer.GroupId, consumer.Topic)
 
 		r := kafka.NewReader(kafka.ReaderConfig{
 			Brokers: []string{consumer.BrokerUrl},
@@ -42,7 +42,7 @@ func RegisterConsumers(consumers []KafkaConsumer, l *zap.SugaredLogger, lc fx.Li
 					for {
 						m, err := r.ReadMessage(context.Background())
 						if err != nil {
-							l.Errorln("failed to consume message", err)
+							l.Errorf("failed to consume message (topic='%v', consumer='%v', consumerGroup='%v': '%v'", consumer.Topic, consumer.Name, consumer.GroupId, err)
 							break
 						}
 
