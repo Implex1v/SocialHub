@@ -6,6 +6,7 @@ import (
 	"github.com/segmentio/kafka-go"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
+	"strconv"
 	"time"
 	"youtube-worker/metrics"
 )
@@ -18,15 +19,16 @@ func NewYoutubePollConsumer() KafkaConsumer {
 		Topic:     "youtube.poll",
 		GroupId:   "youtube-worker",
 		Name:      "youtube-poll-consumer",
-		consume: func(message *KafkaMessage) {
+		consume: func(message *KafkaMessage) error {
 			println(string(message.Value))
+			return nil
 		},
 	}
 }
 
 func RegisterConsumers(consumers []KafkaConsumer, l *zap.SugaredLogger, lc fx.Lifecycle, metrics *metrics.AppMetrics) {
 	for _, consumer := range consumers {
-		l.Debugf("Registering consumer '%v' for topic '%v'", consumer.Name, consumer.Topic)
+		l.Infof("Registering consumer '%v' for topic '%v'", consumer.Name, consumer.Topic)
 
 		r := kafka.NewReader(kafka.ReaderConfig{
 			Brokers: []string{consumer.BrokerUrl},
@@ -39,32 +41,18 @@ func RegisterConsumers(consumers []KafkaConsumer, l *zap.SugaredLogger, lc fx.Li
 				go func() {
 					for {
 						m, err := r.ReadMessage(context.Background())
-						go func() {
-							before := time.Now().Local()
+						if err != nil {
+							l.Errorln("failed to consume message", err)
+							break
+						}
 
-							if err != nil {
-								labels := prom.Labels{
-									"topic":          consumer.Topic,
-									"consumer_group": consumer.GroupId,
-									"success":        "false",
-								}
-								metrics.
-									KafkaConsumeSum.
-									MetricCollector.(*prom.SummaryVec).With(labels).Observe(time.Now().Local().Sub(before).Seconds())
-								l.Errorln("failed to consume message", err)
-								return
-							}
+						metrics.
+							KafkaConsumeCount.
+							MetricCollector.(*prom.CounterVec).
+							With(prom.Labels{"topic": consumer.Topic, "consumer_group": consumer.GroupId}).
+							Inc()
 
-							consumer.consume(of(m))
-							labels := prom.Labels{
-								"topic":          consumer.Topic,
-								"consumer_group": consumer.GroupId,
-								"success":        "true",
-							}
-							metrics.
-								KafkaConsumeSum.
-								MetricCollector.(*prom.SummaryVec).With(labels).Observe(time.Now().Local().Sub(before).Seconds())
-						}()
+						go consume(metrics, consumer, l, m)
 					}
 				}()
 				return nil
@@ -74,6 +62,23 @@ func RegisterConsumers(consumers []KafkaConsumer, l *zap.SugaredLogger, lc fx.Li
 			},
 		})
 	}
+}
+
+func consume(appMetrics *metrics.AppMetrics, consumer KafkaConsumer, logger *zap.SugaredLogger, m kafka.Message) {
+	before := time.Now().Local()
+
+	err := consumer.consume(of(m))
+	if err != nil {
+		logger.Errorf("failed to handle message (topic='%v', key='%v', offset='%v', partition='%v', message='%v'): '%v'", m.Topic, string(m.Key), m.Offset, m.Partition, strFirstCharacters(string(m.Value), 500), err)
+	} else {
+		logger.Debugf("handled message (topic='%v', key='%v', offset='%v', partition='%v', message='%v')", m.Topic, string(m.Key), m.Offset, m.Partition, strFirstCharacters(string(m.Value), 500))
+	}
+
+	appMetrics.
+		KafkaConsumeSum.
+		MetricCollector.(*prom.SummaryVec).
+		With(prom.Labels{"topic": consumer.Topic, "consumer_group": consumer.GroupId, "success": strconv.FormatBool(err == nil)}).
+		Observe(time.Now().Local().Sub(before).Seconds())
 }
 
 var consumerModule = fx.Module(

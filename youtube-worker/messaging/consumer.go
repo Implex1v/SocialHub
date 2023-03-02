@@ -10,7 +10,7 @@ type KafkaConsumer struct {
 	Topic     string
 	GroupId   string
 	Name      string
-	consume   func(message *KafkaMessage)
+	consume   func(message *KafkaMessage) error
 }
 
 type KafkaMessage struct {
