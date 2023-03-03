@@ -1,4 +1,9 @@
 version: "3.7"
+
+x-buildargs: &build_args
+  GIT_COMMIT: ${GIT_COMMIT:-'git-commit'}
+  BUILD_VERSION: ${BUILD_VERSION:-'semver'}
+  
 networks:
   redpanda_network:
     driver: bridge
