@@ -2,10 +2,12 @@ package integrationtest
 
 import (
 	"context"
+	"fmt"
 	"github.com/segmentio/kafka-go"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/fx"
+	"log"
 	"os"
 	"testing"
 	"time"
@@ -13,12 +15,15 @@ import (
 	"youtube-worker/config"
 )
 
-type IntegrationBlock func()
+type Wrapper struct {
+	ctx       context.Context
+	container testcontainers.Container
+	app       *fx.App
+	hostPort  string
+}
 
-// see: https://golang.testcontainers.org/quickstart/
-
-func IntegrationTest(t *testing.T, block IntegrationBlock) {
-	ctx := context.Background()
+func (w *Wrapper) RunContainer() error {
+	w.ctx = context.Background()
 	req := testcontainers.ContainerRequest{
 		Image:        "docker.redpanda.com/vectorized/redpanda:v22.3.11",
 		ExposedPorts: []string{"9092:9092/tcp"},
@@ -26,44 +31,48 @@ func IntegrationTest(t *testing.T, block IntegrationBlock) {
 		WaitingFor:   wait.ForLog("Initialized cluster_id to"),
 	}
 
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	container, err := testcontainers.GenericContainer(w.ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
 
+	w.container = container
 	if err != nil {
-		t.Error(err)
+		return fmt.Errorf("failed to create container: '%w'", err)
 	}
 
-	mappedPort, err := container.MappedPort(ctx, "9092")
+	mappedPort, err := w.container.MappedPort(w.ctx, "9092")
 	if err != nil {
-		t.Error("failed to get port", err)
+		return fmt.Errorf("failed to get kafka port: '%w'", err)
 	}
 
 	err = os.Setenv("KAFKA_PORT", mappedPort.Port())
 	if err != nil {
-		t.Error("failed tp set env KAFKA_PORT", err)
+		return fmt.Errorf("failed tp set env KAFKA_PORT: '%w'", err)
 	}
 
-	app := fx.New(
+	w.hostPort = mappedPort.Port()
+	w.app = fx.New(
 		composition.RootModule,
 	)
 
 	go func() {
-		app.Run()
+		w.app.Run()
 	}()
-	defer app.Done()
 
-	block()
-
-	if err := container.Terminate(ctx); err != nil {
-		t.Fatalf("failed to terminate kafka: %v", err.Error())
-	}
+	return nil
 }
 
-func NewMessage(t *testing.T, topic string, message string) {
+func (w *Wrapper) CleanUp() {
+	if err := w.container.Terminate(w.ctx); err != nil {
+		log.Fatalf("failed to terminate kafka: %v", err.Error())
+	}
+	w.app.Done()
+}
+
+func (w *Wrapper) NewMessage(t *testing.T, topic string, message string) {
 	conf := config.NewKafkaConfig()
-	conn, err := kafka.DialLeader(context.Background(), "tcp", conf.Host+":"+conf.Port, topic, 0)
+	conn, err := kafka.DialLeader(w.ctx, "tcp", conf.Host+":"+w.hostPort, topic, 0)
 	if err != nil {
 		t.Fatal("failed to dial leader:", err)
 	}
