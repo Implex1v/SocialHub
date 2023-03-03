@@ -5,6 +5,15 @@ networks:
 volumes:
   redpanda-0: null
 services:
+  youtube-worker:
+    image: ${CR_BASE:-ghcr.io/implex1v}/socialhub-youtube-worker:${BUILD_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - 8000:8000
+    build: 
+      context: ./youtube-worker/
+      args:
+        <<: *build_args  
   redpanda-0:
     command:
       - redpanda
@@ -33,8 +42,8 @@ services:
       # - --default-log-level=debug
     image: docker.redpanda.com/vectorized/redpanda:v22.3.11
     container_name: redpanda-0
-    volumes:
-      - redpanda-0:/var/lib/redpanda/data
+    # volumes:
+    #   - redpanda-0:/var/lib/redpanda/data
     networks:
       - redpanda_network
     ports:

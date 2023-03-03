@@ -1,0 +1,41 @@
+name: api
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "youtube-worker/**"
+  workflow_dispatch:
+    
+jobs:
+  version:
+    uses: Implex1v/socialhub/.github/workflows/_version.yml@main
+    with:
+      component: youtube-worker
+    
+  build:
+    uses: Implex1v/socialhub/.github/workflows/_build.yml@main
+    needs:
+    - version
+    with:
+      version: ${{ needs.version.outputs.version }}
+      component: youtube-worker
+    secrets:
+      cr: ${{ secrets.CR }}
+      cr_token: ${{ secrets.GITHUB_TOKEN }}
+      cr_user: ${{ secrets.CR_USER }}
+
+  # deploy:
+  #   uses: Implex1v/socialhub/.github/workflows/_deploy.yml@main
+  #   needs:
+  #   - version
+  #   - build
+  #   with:
+  #     version: "${{ needs.version.outputs.version }}"
+  #     component: youtube-worker
+  #   secrets:
+  #     cr: ${{ secrets.CR }}
+  #     cr_token: ${{ secrets.GITHUB_TOKEN }}
+  #     cr_user: ${{ secrets.CR_USER }}
+  #     domain: ${{ secrets.BASE_DOMAIN }}
+  #     kube_config: ${{ secrets.KUBE_CONFIG }}

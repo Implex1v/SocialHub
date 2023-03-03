@@ -1,0 +1,77 @@
+name: _deploy
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        description: The component to build
+        type: string
+        required: true
+      version:
+        description: The version to build
+        type: string
+        required: true
+    secrets:
+      cr:
+        description: The container registry to use (default is GitHub)
+        required: true
+      cr_token:
+        description: The container registry token
+        required: true
+      cr_user:
+        description: The registry user
+        required: true
+      domain:
+        description: The domain to deploy to
+        required: true
+      kube_config:
+        description: The kube config
+        required: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  COMPONENT: ${{ inputs.component }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-22.04
+    env:
+      VERSION: ${{ inputs.version }}
+      NAMESPACE: pwgen
+    steps:
+      - uses: actions/checkout@v3
+      - name: Kubernetes login
+        run: |
+          mkdir ~/.kube
+          echo "${{ secrets.kube_config }}" > ~/.kube/config
+      - name: Render values.yaml
+        uses: cuchi/jinja2-action@v1.2.0
+        with:
+          template: ${{ inputs.component }}/chart/values.j2
+          output_file: ${{ inputs.component }}/chart/values.override.yaml
+          strict: true
+          variables: |
+            base_domain=${{ secrets.domain }}
+            image=${{ secrets.cr }}/pwgen-${{ inputs.component }}
+      - name: Kubernetes deploy
+        working-directory: ${{ inputs.component }}/chart
+        id: helm_deploy
+        run: |
+          set -ex
+          helm dependency update
+          helm lint .
+          helm package \
+            --version "${VERSION}" \
+            --app-version "${VERSION}" \
+            .
+          helm upgrade -i --wait \
+            -n ${NAMESPACE} --create-namespace \
+            --version ${VERSION} \
+            -f values.yaml \
+            -f values.override.yaml \
+            ${COMPONENT} \
+            ${COMPONENT}-${VERSION}.tgz
+          helm test ${COMPONENT} -n ${NAMESPACE} --logs --timeout 6m0s
