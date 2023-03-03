@@ -3,12 +3,14 @@ package integrationtest
 import (
 	"context"
 	"fmt"
+	"github.com/phayes/freeport"
 	"github.com/segmentio/kafka-go"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/fx"
 	"log"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 	"youtube-worker/composition"
@@ -19,7 +21,8 @@ type Wrapper struct {
 	ctx       context.Context
 	container testcontainers.Container
 	app       *fx.App
-	hostPort  string
+	kafkaPort string
+	httpPort  string
 }
 
 func (w *Wrapper) RunContainer() error {
@@ -51,7 +54,14 @@ func (w *Wrapper) RunContainer() error {
 		return fmt.Errorf("failed tp set env KAFKA_PORT: '%w'", err)
 	}
 
-	w.hostPort = mappedPort.Port()
+	httpPort, err := freeport.GetFreePort()
+	err = os.Setenv("HTTP_PORT", strconv.Itoa(httpPort))
+	if err != nil {
+		return fmt.Errorf("failed tp set env HTTP_PORT: '%w'", err)
+	}
+
+	w.httpPort = strconv.Itoa(httpPort)
+	w.kafkaPort = mappedPort.Port()
 	w.app = fx.New(
 		composition.RootModule,
 	)
@@ -72,7 +82,7 @@ func (w *Wrapper) CleanUp() {
 
 func (w *Wrapper) NewMessage(t *testing.T, topic string, message string) {
 	conf := config.NewKafkaConfig()
-	conn, err := kafka.DialLeader(w.ctx, "tcp", conf.Host+":"+w.hostPort, topic, 0)
+	conn, err := kafka.DialLeader(w.ctx, "tcp", conf.Host+":"+w.kafkaPort, topic, 0)
 	if err != nil {
 		t.Fatal("failed to dial leader:", err)
 	}

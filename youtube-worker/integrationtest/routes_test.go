@@ -30,7 +30,7 @@ func (s *RoutesTestSuite) TearDownSuite() {
 }
 
 func (s *RoutesTestSuite) Test_Status_Endpoint() {
-	resp, err := http.Get("http://localhost:8000/health")
+	resp, err := http.Get("http://localhost:" + s.wrapper.httpPort + "/health")
 	if err != nil {
 		s.T().Error("failed to get status", err)
 	}
@@ -40,7 +40,7 @@ func (s *RoutesTestSuite) Test_Status_Endpoint() {
 }
 
 func (s *RoutesTestSuite) Test_Metrics_Endpoint() {
-	resp, err := http.Get("http://localhost:8000/metrics")
+	resp, err := http.Get("http://localhost:" + s.wrapper.httpPort + "/metrics")
 	if err != nil {
 		s.T().Error("failed to get status", err)
 	}

@@ -6,5 +6,6 @@ var Module = fx.Module(
 	"config",
 	fx.Provide(
 		NewKafkaConfig,
+		NewHttpConfig,
 	),
 )
