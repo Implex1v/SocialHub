@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 	"strconv"
 	"time"
+	"youtube-worker/config"
 	"youtube-worker/metrics"
 )
 
@@ -26,12 +27,12 @@ func NewYoutubePollConsumer() KafkaConsumer {
 	}
 }
 
-func RegisterConsumers(consumers []KafkaConsumer, l *zap.SugaredLogger, lc fx.Lifecycle, metrics *metrics.AppMetrics) {
+func RegisterConsumers(consumers []KafkaConsumer, l *zap.SugaredLogger, lc fx.Lifecycle, metrics *metrics.AppMetrics, conf config.KafkaConfig) {
 	for _, consumer := range consumers {
-		l.Infof("Registering consumer '%v' in consumer group '%v' for topic '%v'", consumer.Name, consumer.GroupId, consumer.Topic)
+		l.Infof("Registering consumer '%v' in consumer group '%v' for topic '%v' on '%v:%v'", consumer.Name, consumer.GroupId, consumer.Topic, conf.Host, conf.Port)
 
 		r := kafka.NewReader(kafka.ReaderConfig{
-			Brokers: []string{consumer.BrokerUrl},
+			Brokers: []string{conf.Host + ":" + conf.Port},
 			Topic:   consumer.Topic,
 			GroupID: consumer.GroupId,
 		})
