@@ -53,5 +53,5 @@ jobs:
           docker-compose push ${COMPONENT}
       - name: Retag to latest and push image
         run: |
-          docker tag ${CR_BASE}/pwgen-${COMPONENT}:${BUILD_VERSION} ${CR_BASE}/pwgen-${COMPONENT}:latest
-          docker push ${CR_BASE}/pwgen-${COMPONENT}:latest
+          docker tag ${CR_BASE}/socialhub-${COMPONENT}:${BUILD_VERSION} ${CR_BASE}/socialhub-${COMPONENT}:latest
+          docker push ${CR_BASE}/socialhub-${COMPONENT}:latest
