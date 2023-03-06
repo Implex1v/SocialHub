@@ -22,7 +22,7 @@ jobs:
       component: youtube-worker
     secrets:
       cr: ${{ secrets.CR }}
-      cr_token: ${{ secrets.GITHUB_TOKEN }}
+      cr_token: ${{ secrets.CR_TOKEN }}
       cr_user: ${{ secrets.CR_USER }}
 
   # deploy:
